@@ -3,6 +3,9 @@ from PIL import Image
 from math import gcd
 from hashlib import blake2b
 import random
+import numpy as np
+
+Sizes=[]
 
 #RSA Functions:
 def Check_Prime(num):
@@ -84,80 +87,96 @@ def DecMessage_AfterHash(Message,Message_afterHash_phi,Esend,ModSend):
 	return False
 
 
-#Encode Picture & Text Functions:
+#  improvment1 - Encode Picture & Text Functions:
 def EncodePicture(rgb_img_path, bin_img_path, new_img_name):
-	imC = Image.open(rgb_img_path).convert('RGB')
-	imB = Image.open(bin_img_path).convert('1')
-	# Split into 3 channels
-	r, g, b = imC.split()
+	im = Image.open(rgb_img_path)
+	width1, height1 = im.size
 
-	#bpixel
-	pixels = list(b.getdata())
-	width, height = b.size
-	#binary blue channel
-	b_arr = [bin(col)[2:].zfill(8) for col in pixels]
+	im = Image.open(bin_img_path)
+	width2, height2 = im.size
 
-	#rpixel
-	pixels = list(r.getdata())
-	width, height = r.size
-	#binary red channel
-	r_arr = [bin(col)[2:].zfill(8) for col in pixels ]
+	if(width1>=width2 and height1>=height2):
+		imC = Image.open(rgb_img_path).convert('RGB')
+		imB = Image.open(bin_img_path).convert('1')
+		# Split into 3 channels
+		r, g, b = imC.split()
 
+		#bpixel
+		pixels = list(b.getdata())
+		width, height = b.size
+		#binary blue channel
+		b_arr = [bin(col)[2:].zfill(8) for col in pixels]
 
-
-	#gpixel
-	pixels = list(g.getdata())
-	width, height = g.size
-	#binary green channel
-	g_arr = [bin(col)[2:].zfill(8) for col in pixels ]
-
+		#rpixel
+		pixels = list(r.getdata())
+		width, height = r.size
+		#binary red channel
+		r_arr = [bin(col)[2:].zfill(8) for col in pixels ]
 
 
-	#binarypixel
-	pixels = list(imB.getdata())
-	width, height = imB.size
-	#binary channel
-	binary_arr = [bin(col)[2:].zfill(8) for col in pixels ]
 
-	#XOR
-	for i in range(len(binary_arr)):
-			x=(int(binary_arr[i][7]) ^ int(r_arr[i][7]))
-			if(not(x)):
-				y=1 ^ int(g_arr[i][7])
-				if(not(y)):
-					pixel = list(b_arr[i])
-					pixel[7] = '1'
-					pixel = ''.join(pixel)
-					b_arr[i]=pixel
+		#gpixel
+		pixels = list(g.getdata())
+		width, height = g.size
+		#binary green channel
+		g_arr = [bin(col)[2:].zfill(8) for col in pixels ]
+
+
+
+		#binarypixel
+		pixels = list(imB.getdata())
+		width, height = imB.size
+		#binary channel
+		binary_arr = [bin(col)[2:].zfill(8) for col in pixels ]
+		
+
+		#XOR
+		for i in range(len(binary_arr)):
+				x=(int(binary_arr[i][7]) ^ int(r_arr[i][7]))
+				if(not(x)):
+					y=1 ^ int(g_arr[i][7])
+					if(not(y)):
+						pixel = list(b_arr[i])
+						pixel[7] = '1'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+					else:
+						pixel = list(b_arr[i])
+						pixel[7] = '0'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
 				else:
-					pixel = list(b_arr[i])
-					pixel[7] = '0'
-					pixel = ''.join(pixel)
-					b_arr[i]=pixel
-			else:
-				y=0 ^ int(g_arr[i][7])
-				if(y):
-					pixel = list(b_arr[i])
-					pixel[7] = '0'
-					pixel = ''.join(pixel)
-					b_arr[i]=pixel
-				else:
-					pixel = list(b_arr[i])
-					pixel[7] = '1'
-					pixel = ''.join(pixel)
-					b_arr[i]=pixel
+					y=0 ^ int(g_arr[i][7])
+					if(y):
+						pixel = list(b_arr[i])
+						pixel[7] = '0'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+					else:
+						pixel = list(b_arr[i])
+						pixel[7] = '1'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
 
 
 
 
+		new_b = [int(col,2) for col in b_arr ]
+		b.putdata(new_b)
+		# Recombine back to RGB image
+		result = Image.merge('RGB', (r,g,b))
+		result.save(new_img_name + '.png')
+		Sizes.append(width2)
+		Sizes.append(height2)
+		return
 
-	new_b = [int(col,2) for col in b_arr ]
-	b.putdata(new_b)
-	# Recombine back to RGB image
-	result = Image.merge('RGB', (r,g,b))
-	result.save(new_img_name + '.png')
+	else: exit(0)
 
 def DecodePicture(img_path):
+
+	width=Sizes[0]
+	height=Sizes[1]
+
 	imCombined = Image.open(img_path)
 
 	rc, gc, bc = imCombined.split()
@@ -207,8 +226,8 @@ def DecodePicture(img_path):
 
 
 
-	binary_image_arr=binary_image_arr[:128*128]
-	nimg=Image.new('1',(128,128))
+	binary_image_arr=binary_image_arr[:width*height]
+	nimg=Image.new('1',(width,height))
 	nimg.putdata(binary_image_arr)
 	nimg.show()
 
@@ -360,7 +379,7 @@ def EncodePicture_Rsa(rgb_img_path, bin_img_path):
 	return secrect_img_num
 
 
-#improvment2
+#improvment2 - With RSA Encription
 def improv2():
 	Message = EncodePicture_Rsa('1.jpeg', '2.jpeg')
 	print("Secret:",Message)
@@ -411,6 +430,173 @@ def improv2():
 	else:
 		print("\nMessage Problem!!!!\n")
 
+
+#improvment3 - Array Transpose
+def improv3Encode(rgb_img_path, bin_img_path, new_img_name):
+	im = Image.open(rgb_img_path)
+	width1, height1 = im.size
+
+	im = Image.open(bin_img_path)
+	width2, height2 = im.size
+
+	if(width1>=width2 and height1>=height2):
+		imC = Image.open(rgb_img_path).convert('RGB')
+		imB = Image.open(bin_img_path).convert('1')
+		# Split into 3 channels
+		r, g, b = imC.split()
+
+		#bpixel
+		pixels = list(b.getdata())
+		width, height = b.size
+		#binary blue channel
+		b_arr = [bin(col)[2:].zfill(8) for col in pixels]
+
+		#rpixel
+		pixels = list(r.getdata())
+		width, height = r.size
+		#binary red channel
+		r_arr = [bin(col)[2:].zfill(8) for col in pixels ]
+
+
+
+		#gpixel
+		pixels = list(g.getdata())
+		width, height = g.size
+		#binary green channel
+		g_arr = [bin(col)[2:].zfill(8) for col in pixels ]
+
+
+
+		#binarypixel
+		pixels = list(imB.getdata())
+		pix1=np.reshape(pixels,(width2,height2))
+		ArrTrans2D=np.transpose(pix1)
+		ArrTrans1D=ArrTrans2D.flatten()
+		width, height = imB.size
+		#binary channel
+		binary_arr = [bin(col)[2:].zfill(8) for col in ArrTrans1D ]
+		
+
+		#XOR
+		for i in range(len(binary_arr)):
+				x=(int(binary_arr[i][7]) ^ int(r_arr[i][7]))
+				if(not(x)):
+					y=1 ^ int(g_arr[i][7])
+					if(not(y)):
+						pixel = list(b_arr[i])
+						pixel[7] = '1'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+					else:
+						pixel = list(b_arr[i])
+						pixel[7] = '0'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+				else:
+					y=0 ^ int(g_arr[i][7])
+					if(y):
+						pixel = list(b_arr[i])
+						pixel[7] = '0'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+					else:
+						pixel = list(b_arr[i])
+						pixel[7] = '1'
+						pixel = ''.join(pixel)
+						b_arr[i]=pixel
+
+
+
+
+		new_b = [int(col,2) for col in b_arr ]
+		b.putdata(new_b)
+		# Recombine back to RGB image
+		result = Image.merge('RGB', (r,g,b))
+		result.save(new_img_name + '.png')
+		Sizes.append(width2)
+		Sizes.append(height2)
+		return
+
+	else: exit(0)
+
+def improve3Decode(img_path):
+	width=Sizes[0]
+	height=Sizes[1]
+
+	imCombined = Image.open(img_path)
+
+	rc, gc, bc = imCombined.split()
+
+
+	#bpixel
+	pixelsC = list(bc.getdata())
+	widthC, heightC = bc.size
+	#binary blue channel
+	b_arrC = [bin(col)[2:].zfill(8) for col in pixelsC]
+
+
+
+	#rpixel
+	pixelsC = list(rc.getdata())
+	widthC, heightC = rc.size
+	#binary red channel
+	r_arrC = [bin(col)[2:].zfill(8) for col in pixelsC]
+
+
+	#gpixel
+	pixelsC = list(gc.getdata())
+	widthC, heightC = gc.size
+	#binary green channel
+	g_arrC = [bin(col)[2:].zfill(8) for col in pixelsC]
+
+
+
+
+	binary_image_arr = []
+	#XOR
+
+	for i in range(len(b_arrC)):
+			x=(int(b_arrC[i][7]) ^ int(g_arrC[i][7]))
+			if(not(x)):
+				y=1 ^ int(r_arrC[i][7])
+				if(not(y)):
+					binary_image_arr.append(1)
+				else:
+					binary_image_arr.append(0)
+			else:
+				y=0 ^ int(r_arrC[i][7])
+				if(y):
+					binary_image_arr.append(0)
+				else:
+					binary_image_arr.append(1)
+
+
+
+	binary_image_arr=binary_image_arr[:width*height]
+
+	pixels = binary_image_arr
+	pix1=np.reshape(pixels,(width,height))
+	ArrTrans2D=np.transpose(pix1)
+	ArrTrans1D=ArrTrans2D.flatten()
+
+	nimg=Image.new('1',(width,height))
+	nimg.putdata(ArrTrans1D)
+	nimg.show()
+
+
+
+
+#   $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$   Main    $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+# improvment 1:
+
+#EncodePicture('1.jpeg', '2.jpeg', 'result')
+#EncodeText('1.jpeg', 'resultText')
+#DecodeText('resultText.png')
+#DecodePicture('result.png')
+
+# improvment 2:
+
 #improv2()
 #DecodePicture('result0.png')
 #DecodePicture('result1.png')	
@@ -419,9 +605,11 @@ def improv2():
 #DecodePicture('result4.png')
 
 
+# improvment 3:
 
-#Main
-EncodePicture('1.jpeg', '2.jpeg', 'result')
-#EncodeText('1.jpeg', 'resultText')
-#DecodeText('resultText.png')
+#improv3Encode('1.jpeg', 'qrcode.jpeg', 'result')
 #DecodePicture('result.png')
+#improve3Decode('result.png')
+
+###############################################################################################################################
+
